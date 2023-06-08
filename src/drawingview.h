@@ -23,5 +23,7 @@ public:
 
     DrawingDocument *GetDocument() const;
 
+    wxPoint lastDragStart;
+
     wxDECLARE_DYNAMIC_CLASS(DrawingView);
 };

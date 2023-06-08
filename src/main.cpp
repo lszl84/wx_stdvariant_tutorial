@@ -12,7 +12,7 @@
 #include "panes/pensizepane.h"
 #include "panes/toolselectionpane.h"
 
-#include "drawingcanvas.h"
+#include "canvas/drawingcanvas.h"
 #include "drawingdocument.h"
 #include "drawingview.h"
 

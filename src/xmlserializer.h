@@ -12,8 +12,6 @@
 #include "shapes/rect.h"
 #include "shapes/circle.h"
 
-#include "shapes/shapevisitor.h"
-
 namespace XmlNodeKeys
 {
     constexpr auto ObjectNodeName = "Object";
@@ -38,7 +36,7 @@ namespace XmlNodeKeys
     constexpr auto VersionValue = "1.2";
 };
 
-struct XmlSerializingVisitor : ShapeVisitor
+struct XmlSerializingVisitor
 {
     XmlSerializingVisitor(wxXmlNode *parentNode) : parentNode(parentNode)
     {
@@ -46,7 +44,7 @@ struct XmlSerializingVisitor : ShapeVisitor
 
     wxXmlNode *parentNode;
 
-    void Visit(const Circle &circle) override
+    void operator()(const Circle &circle)
     {
         wxXmlNode *objectNode = new wxXmlNode(wxXML_ELEMENT_NODE, XmlNodeKeys::ObjectNodeName);
         objectNode->AddAttribute(XmlNodeKeys::TypeAttribute, XmlNodeKeys::CircleNodeType);
@@ -61,7 +59,7 @@ struct XmlSerializingVisitor : ShapeVisitor
         parentNode->AddChild(objectNode);
     }
 
-    void Visit(const Rect &rectangle) override
+    void operator()(const Rect &rectangle)
     {
         wxXmlNode *objectNode = new wxXmlNode(wxXML_ELEMENT_NODE, XmlNodeKeys::ObjectNodeName);
         objectNode->AddAttribute(XmlNodeKeys::TypeAttribute, XmlNodeKeys::RectNodeType);
@@ -77,7 +75,7 @@ struct XmlSerializingVisitor : ShapeVisitor
         parentNode->AddChild(objectNode);
     }
 
-    void Visit(const Path &path) override
+    void operator()(const Path &path)
     {
         wxXmlNode *objectNode = new wxXmlNode(wxXML_ELEMENT_NODE, XmlNodeKeys::ObjectNodeName);
 
@@ -99,20 +97,20 @@ struct XmlSerializingVisitor : ShapeVisitor
 
 struct XmlDeserializingObjectFactory
 {
-    std::unique_ptr<Shape> Deserialize(const wxXmlNode *node)
+    Shape Deserialize(const wxXmlNode *node)
     {
         auto type = node->GetAttribute(XmlNodeKeys::TypeAttribute);
         if (type == XmlNodeKeys::PathNodeType)
         {
-            return std::make_unique<Path>(DeserializePath(node));
+            return DeserializePath(node);
         }
         else if (type == XmlNodeKeys::RectNodeType)
         {
-            return std::make_unique<Rect>(DeserializeRect(node));
+            return DeserializeRect(node);
         }
         else if (type == XmlNodeKeys::CircleNodeType)
         {
-            return std::make_unique<Circle>(DeserializeCircle(node));
+            return DeserializeCircle(node);
         }
 
         throw std::runtime_error("Unknown object type: " + type);
@@ -174,7 +172,7 @@ struct XmlSerializer
         wxFileSystem::AddHandler(new wxZipFSHandler);
     }
 
-    wxXmlDocument SerializeShapes(const std::vector<std::unique_ptr<Shape>> &objects)
+    wxXmlDocument SerializeShapes(const std::vector<Shape> &objects)
     {
         wxXmlDocument doc;
 
@@ -185,7 +183,7 @@ struct XmlSerializer
 
         for (const auto &obj : objects)
         {
-            obj->Accept(visitor);
+            std::visit(visitor, obj);
         }
 
         doc.SetRoot(docNode);
@@ -193,11 +191,11 @@ struct XmlSerializer
         return doc;
     }
 
-    std::vector<std::unique_ptr<Shape>> DeserializeShapes(const wxXmlDocument &doc)
+    std::vector<Shape> DeserializeShapes(const wxXmlDocument &doc)
     {
         wxXmlNode *root = doc.GetRoot();
 
-        std::vector<std::unique_ptr<Shape>> objects;
+        std::vector<Shape> objects;
 
         XmlDeserializingObjectFactory factory{};
 

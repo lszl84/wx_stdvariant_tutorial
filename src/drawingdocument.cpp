@@ -1,5 +1,5 @@
 #include "drawingdocument.h"
-#include "streamutils.h"
+#include "utils/streamutils.h"
 
 wxIMPLEMENT_DYNAMIC_CLASS(DrawingDocument, wxDocument);
 

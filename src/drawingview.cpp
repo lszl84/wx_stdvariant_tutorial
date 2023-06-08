@@ -1,12 +1,14 @@
 #include <wx/graphics.h>
 
-#include <memory>
-
 #include "drawingview.h"
 #include "myapp.h"
-#include "drawingcanvas.h"
 
-#include "shapefactory.h"
+#include "canvas/drawingcanvas.h"
+#include "canvas/drawingvisitor.h"
+
+#include "shapes/shapefactory.h"
+
+#include "utils/visitor.h"
 
 wxIMPLEMENT_DYNAMIC_CLASS(DrawingView, wxView);
 
@@ -51,22 +53,49 @@ void DrawingView::OnDraw(wxDC *dc)
 
     if (gc)
     {
+        DrawingVisitor drawingVisitor{*gc};
+
         for (const auto &s : GetDocument()->shapes)
         {
-            s->Draw(*gc);
+            std::visit(drawingVisitor, s);
         }
     }
 }
 
 void DrawingView::OnMouseDown(wxPoint pt)
 {
+    lastDragStart = pt;
+
     GetDocument()->shapes.push_back(ShapeFactory::Create(MyApp::GetToolSettings(), pt));
     GetDocument()->Modify(true);
 }
 
 void DrawingView::OnMouseDrag(wxPoint pt)
 {
-    GetDocument()->shapes.back()->HandleCreationByMouseDrag(pt);
+    auto &shapeInCreation = GetDocument()->shapes.back();
+
+    std::visit(visitor{[&](Path &path)
+                       {
+                           path.points.push_back(pt);
+                       },
+                       [&](Rect &rect)
+                       {
+                           auto left = std::min(lastDragStart.x, pt.x);
+                           auto top = std::min(lastDragStart.y, pt.y);
+                           auto right = std::max(lastDragStart.x, pt.x);
+                           auto bottom = std::max(lastDragStart.y, pt.y);
+
+                           rect.rect.SetLeft(left);
+                           rect.rect.SetTop(top);
+                           rect.rect.SetRight(right);
+                           rect.rect.SetBottom(bottom);
+                       },
+                       [&](Circle &circle)
+                       {
+                           circle.radius = std::sqrt(std::pow(pt.x - circle.center.m_x, 2) + std::pow(pt.y - circle.center.m_y, 2));
+                       }},
+               shapeInCreation);
+
     GetDocument()->Modify(true);
 }
 

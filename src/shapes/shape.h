@@ -1,15 +1,9 @@
 #pragma once
 
-#include <wx/graphics.h>
-#include <wx/xml/xml.h>
+#include <variant>
 
-#include "shapevisitor.h"
+#include "path.h"
+#include "rect.h"
+#include "circle.h"
 
-struct Shape
-{
-    virtual void Draw(wxGraphicsContext &gc) const = 0;
-    virtual void HandleCreationByMouseDrag(wxPoint currentDragPoint) = 0;
-    virtual ~Shape() noexcept {};
-
-    virtual void Accept(ShapeVisitor &visitor) const = 0;
-};
+using Shape = std::variant<Path, Rect, Circle>;
